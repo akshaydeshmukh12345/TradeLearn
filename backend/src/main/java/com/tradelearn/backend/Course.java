@@ -1,9 +1,18 @@
 
 package com.tradelearn.backend;
 
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+
+@Entity
 public class Course {
 
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String title;
     private String description;
     private String category;
@@ -15,14 +24,12 @@ public class Course {
     }
 
     public Course(
-            Long id,
             String title,
             String description,
             String category,
             String level,
             double price,
             String instructor) {
-        this.id = id;
         this.title = title;
         this.description = description;
         this.category = category;
@@ -57,5 +64,29 @@ public class Course {
 
     public String getInstructor() {
         return instructor;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public void setPrice(double price) {
+        this.price = price;
+    }
+
+    public void setInstructor(String instructor) {
+        this.instructor = instructor;
     }
 }

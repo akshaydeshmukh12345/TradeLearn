@@ -1,0 +1,6 @@
+warning: in the working copy of 'backend/src/main/resources/application.properties', LF will be replaced by CRLF the next time Git touches it
+ backend/src/main/java/com/tradelearn/Course.java   |  61 [31m----[m
+ .../com/tradelearn/backend/CourseController.java   | 156 [32m++++[m[31m-----[m
+ backend/src/main/resources/application.properties  |  11 [32m+[m[31m-[m
+ src/pages/Courses.tsx                              | 366 [32m++++++++++[m[31m-----------[m
+ 4 files changed, 240 insertions(+), 354 deletions(-)
