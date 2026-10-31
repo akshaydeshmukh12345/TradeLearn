@@ -9,6 +9,7 @@ import CourseDetails from "./pages/CourseDetails";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Dashboard from "./pages/Dashboard";
+import AdminDashboard from "./pages/admin/AdminDashboard";
 import type { User } from "./types";
 
 const STORAGE_KEY = "tradelearn_user";
@@ -16,6 +17,7 @@ const STORAGE_KEY = "tradelearn_user";
 function readUser(): User | null {
   try {
     const savedUser = localStorage.getItem(STORAGE_KEY);
+
     if (!savedUser) return null;
 
     const parsed: unknown = JSON.parse(savedUser);
@@ -28,7 +30,10 @@ function readUser(): User | null {
       typeof parsed.name === "string" &&
       typeof parsed.email === "string"
     ) {
-      return { name: parsed.name, email: parsed.email };
+      return {
+        name: parsed.name,
+        email: parsed.email,
+      };
     }
 
     return null;
@@ -41,6 +46,7 @@ function MainLayout() {
   return (
     <div className="min-h-screen bg-white">
       <Navbar />
+
       <main>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -49,6 +55,7 @@ function MainLayout() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
       <Footer />
     </div>
   );
@@ -71,6 +78,7 @@ export default function App() {
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+
     setUser(nextUser);
     return true;
   };
@@ -84,6 +92,7 @@ export default function App() {
     };
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextUser));
+
     setUser(nextUser);
     return true;
   };
@@ -96,6 +105,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
+        <Route path="/admin/*" element={<AdminDashboard />} />
+
         <Route
           path="/dashboard"
           element={

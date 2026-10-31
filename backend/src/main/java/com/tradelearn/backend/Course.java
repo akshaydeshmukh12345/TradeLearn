@@ -1,12 +1,12 @@
-
 package com.tradelearn.backend;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
+@Table(name = "course")
 public class Course {
 
     @Id
@@ -19,6 +19,15 @@ public class Course {
     private String level;
     private double price;
     private String instructor;
+
+    @OneToMany(
+            mappedBy = "course",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    @OrderBy("position ASC")
+    @JsonIgnore
+    private List<CourseModule> modules = new ArrayList<>();
 
     public Course() {
     }
@@ -36,6 +45,16 @@ public class Course {
         this.level = level;
         this.price = price;
         this.instructor = instructor;
+    }
+
+    public void addModule(CourseModule module) {
+        modules.add(module);
+        module.setCourse(this);
+    }
+
+    public void removeModule(CourseModule module) {
+        modules.remove(module);
+        module.setCourse(null);
     }
 
     public Long getId() {
@@ -64,6 +83,10 @@ public class Course {
 
     public String getInstructor() {
         return instructor;
+    }
+
+    public List<CourseModule> getModules() {
+        return modules;
     }
 
     public void setTitle(String title) {

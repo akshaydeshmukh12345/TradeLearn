@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -17,108 +17,124 @@ import {
   Video,
 } from "lucide-react";
 
-const courseInfo = {
-  title: "Stock Market Fundamentals",
-  subtitle:
-    "Build a strong foundation in investing and understand how the stock market works.",
-  category: "Beginner",
-  rating: "4.9",
-  students: "2,450+",
-  duration: "8 hours",
-  lessons: 25,
-  description:
-    "Learn the fundamentals of stock markets, understand how stocks are traded, explore essential investing concepts, and build confidence with a structured learning path.",
-  whatYouLearn: [
-    "Understand stock markets and stock exchanges",
-    "Learn how to read stock prices and market movements",
-    "Understand investing, trading, and portfolio basics",
-    "Identify common market risks and avoid beginner mistakes",
-  ],
+type Course = {
+  id: number;
+  title: string;
+  description: string;
+  category: string;
+  level: string;
+  price: number;
+  instructor: string;
 };
 
 const modules = [
   {
     title: "Module 1: Introduction to the Stock Market",
     lessons: [
-      { title: "What is the Stock Market?", duration: "12 min", done: true },
-      { title: "How Stock Exchanges Work", duration: "15 min", done: true },
-      { title: "Investing vs Trading", duration: "10 min", done: true },
-      {
-        title: "Understanding Market Participants",
-        duration: "14 min",
-        done: false,
-      },
+      { title: "What is the Stock Market?", duration: "12 min" },
+      { title: "How Stock Exchanges Work", duration: "15 min" },
+      { title: "Investing vs Trading", duration: "10 min" },
+      { title: "Understanding Market Participants", duration: "14 min" },
     ],
   },
   {
     title: "Module 2: Essential Market Concepts",
     lessons: [
-      {
-        title: "Stocks, Shares and Ownership",
-        duration: "13 min",
-        done: false,
-      },
-      {
-        title: "Market Capitalization Explained",
-        duration: "16 min",
-        done: false,
-      },
-      { title: "Bull and Bear Markets", duration: "11 min", done: false },
-      {
-        title: "Indices: Nifty 50 and Sensex",
-        duration: "18 min",
-        done: false,
-      },
+      { title: "Stocks, Shares and Ownership", duration: "13 min" },
+      { title: "Market Capitalization Explained", duration: "16 min" },
+      { title: "Bull and Bear Markets", duration: "11 min" },
+      { title: "Indices: Nifty 50 and Sensex", duration: "18 min" },
     ],
   },
   {
     title: "Module 3: Your First Investment",
     lessons: [
-      {
-        title: "Understanding Demat Accounts",
-        duration: "15 min",
-        done: false,
-      },
-      {
-        title: "Orders and Settlement Basics",
-        duration: "17 min",
-        done: false,
-      },
-      {
-        title: "Building an Investment Checklist",
-        duration: "20 min",
-        done: false,
-      },
+      { title: "Understanding Demat Accounts", duration: "15 min" },
+      { title: "Orders and Settlement Basics", duration: "17 min" },
+      { title: "Building an Investment Checklist", duration: "20 min" },
     ],
   },
 ];
 
+const defaultLearningPoints = [
+  "Understand stock markets and stock exchanges",
+  "Learn how to read stock prices and market movements",
+  "Understand investing, trading, and portfolio basics",
+  "Identify common market risks and avoid beginner mistakes",
+];
+
 export default function CourseDetails() {
   const { id } = useParams();
+
+  const [course, setCourse] = useState<Course | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [enrolled, setEnrolled] = useState(false);
   const [expandedModules, setExpandedModules] = useState<number[]>([0]);
-  const [completedLessons, setCompletedLessons] = useState<string[]>([
-    "What is the Stock Market?",
-    "How Stock Exchanges Work",
-    "Investing vs Trading",
-  ]);
+  const [completedLessons, setCompletedLessons] = useState<string[]>([]);
   const [activeLesson, setActiveLesson] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
 
-  const isTechnical = id === "2";
-  const isRisk = id === "3";
+  useEffect(() => {
+    const controller = new AbortController();
 
-  const courseTitle = isTechnical
-    ? "Technical Analysis Masterclass"
-    : isRisk
-      ? "Risk Management Essentials"
-      : courseInfo.title;
+    async function fetchCourse() {
+      setLoading(true);
+      setError("");
+      setCourse(null);
 
-  const courseSubtitle = isTechnical
-    ? "Read price charts, recognize patterns, and understand technical indicators."
-    : isRisk
-      ? "Learn the fundamentals of protecting capital and managing investment risk."
-      : courseInfo.subtitle;
+      if (!id || !/^\d+$/.test(id)) {
+        setError("Invalid course ID.");
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `http://localhost:8081/api/courses/${id}`,
+          { signal: controller.signal },
+        );
+
+        if (response.status === 404) {
+          throw new Error("Course nahi mila.");
+        }
+
+        if (!response.ok) {
+          throw new Error(
+            `Course details load nahi ho paayi (${response.status}).`,
+          );
+        }
+
+        const data: Course = await response.json();
+
+        if (
+          typeof data.id !== "number" ||
+          typeof data.title !== "string" ||
+          typeof data.description !== "string"
+        ) {
+          throw new Error("Backend se course data ka format invalid hai.");
+        }
+
+        setCourse(data);
+      } catch (err) {
+        if (err instanceof Error && err.name !== "AbortError") {
+          setError(
+            err.message ||
+              "Course load nahi ho paaya. Backend server check karo.",
+          );
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchCourse();
+
+    return () => controller.abort();
+  }, [id]);
 
   const allLessons = modules.flatMap((module) => module.lessons);
   const progress = Math.round(
@@ -164,9 +180,49 @@ export default function CourseDetails() {
     setCompletedLessons((current) =>
       current.includes(activeLesson) ? current : [...current, activeLesson],
     );
+
     setNotice(`Completed: ${activeLesson}`);
     setActiveLesson(null);
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-blue-100 border-t-blue-700" />
+          <p className="mt-4 font-semibold text-[#172B75]">
+            Loading course details...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !course) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-5 text-center">
+        <BookOpen size={44} className="text-slate-400" />
+        <h1 className="text-2xl font-bold text-[#172B75]">
+          Course unavailable
+        </h1>
+        <p className="max-w-md text-slate-600">
+          {error || "Course nahi mila."}
+        </p>
+        <Link
+          to="/courses"
+          className="rounded-xl bg-[#172B75] px-5 py-3 font-semibold text-white hover:bg-blue-800"
+        >
+          <span className="inline-flex items-center gap-2">
+            <ArrowLeft size={17} /> Back to Courses
+          </span>
+        </Link>
+      </div>
+    );
+  }
+
+  const courseLevel = course.level || course.category || "All Levels";
+  const courseDescription =
+    course.description || "Explore this course and build your knowledge.";
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
@@ -182,30 +238,36 @@ export default function CourseDetails() {
           <div className="grid items-center gap-10 lg:grid-cols-[1.5fr_0.8fr]">
             <div>
               <span className="inline-flex rounded-full border border-white/20 bg-white/10 px-3 py-1.5 text-sm font-medium">
-                {courseInfo.category} Course
+                {courseLevel} Course
               </span>
 
               <h1 className="mt-5 max-w-3xl text-4xl font-extrabold leading-tight md:text-5xl">
-                {courseTitle}
+                {course.title}
               </h1>
 
               <p className="mt-5 max-w-2xl text-base leading-7 text-blue-100 md:text-lg">
-                {courseSubtitle}
+                {courseDescription}
               </p>
 
               <div className="mt-6 flex flex-wrap gap-x-6 gap-y-3 text-sm text-blue-100">
                 <span className="inline-flex items-center gap-2">
-                  <Star size={17} className="fill-amber-400 text-amber-400" />
-                  {courseInfo.rating} rating
+                  <BookOpen size={17} />
+                  {course.category || courseLevel}
                 </span>
+
                 <span className="inline-flex items-center gap-2">
-                  <Users size={17} /> {courseInfo.students} learners
+                  <Users size={17} />
+                  Learn at your own pace
                 </span>
+
                 <span className="inline-flex items-center gap-2">
-                  <Clock size={17} /> {courseInfo.duration}
+                  <Clock size={17} />
+                  Self-paced
                 </span>
+
                 <span className="inline-flex items-center gap-2">
-                  <Video size={17} /> {allLessons.length} demo lessons
+                  <Video size={17} />
+                  {allLessons.length} demo lessons
                 </span>
               </div>
 
@@ -223,19 +285,24 @@ export default function CourseDetails() {
                       const nextLesson = allLessons.find(
                         (lesson) => !completedLessons.includes(lesson.title),
                       );
+
                       if (nextLesson) {
                         const index = allLessons.findIndex(
                           (lesson) => lesson.title === nextLesson.title,
                         );
-                        setExpandedModules(
-                          modules
-                            .map((_, moduleIndex) => moduleIndex)
-                            .filter((moduleIndex) =>
-                              modules[moduleIndex].lessons.some(
-                                (lesson) => lesson.title === nextLesson.title,
-                              ),
-                            ),
+
+                        const moduleIndex = modules.findIndex((module) =>
+                          module.lessons.some(
+                            (lesson) => lesson.title === nextLesson.title,
+                          ),
                         );
+
+                        setExpandedModules((current) =>
+                          current.includes(moduleIndex)
+                            ? current
+                            : [...current, moduleIndex],
+                        );
+
                         handleLessonClick(nextLesson.title, index);
                       } else {
                         setNotice(
@@ -248,6 +315,7 @@ export default function CourseDetails() {
                     <Play size={17} fill="currentColor" /> Start Learning
                   </button>
                 )}
+
                 <a
                   href="#curriculum"
                   className="inline-flex items-center gap-2 rounded-xl border border-white/30 px-6 py-3.5 font-semibold text-white transition hover:bg-white/10"
@@ -261,12 +329,15 @@ export default function CourseDetails() {
               <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/15">
                 <TrendingUp size={34} />
               </div>
+
               <p className="text-sm font-semibold tracking-wide text-blue-100">
                 YOUR LEARNING JOURNEY
               </p>
+
               <h2 className="mt-2 text-2xl font-bold">
                 {enrolled ? "You're enrolled!" : "Start learning today"}
               </h2>
+
               <p className="mt-3 text-sm leading-6 text-blue-100">
                 {enrolled
                   ? "Continue through the curriculum and track the lessons you complete."
@@ -278,6 +349,7 @@ export default function CourseDetails() {
                   <span className="text-blue-100">Course progress</span>
                   <span className="font-bold">{enrolled ? progress : 0}%</span>
                 </div>
+
                 <div className="h-2 overflow-hidden rounded-full bg-white/20">
                   <div
                     className="h-full rounded-full bg-white transition-all"
@@ -292,6 +364,7 @@ export default function CourseDetails() {
                   <p className="mt-3 text-2xl font-bold">{allLessons.length}</p>
                   <p className="mt-1 text-xs text-blue-100">Demo lessons</p>
                 </div>
+
                 <div className="rounded-xl bg-white/10 p-4">
                   <ShieldCheck size={20} />
                   <p className="mt-3 text-2xl font-bold">
@@ -311,14 +384,13 @@ export default function CourseDetails() {
         <div>
           <section>
             <h2 className="text-2xl font-bold text-[#172B75]">
-              What you'll learn
+              About this course
             </h2>
-            <p className="mt-3 leading-7 text-slate-600">
-              {courseInfo.description}
-            </p>
+
+            <p className="mt-3 leading-7 text-slate-600">{courseDescription}</p>
 
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              {courseInfo.whatYouLearn.map((item) => (
+              {defaultLearningPoints.map((item) => (
                 <div key={item} className="flex items-start gap-3">
                   <CheckCircle2
                     size={20}
@@ -337,9 +409,10 @@ export default function CourseDetails() {
                   Course curriculum
                 </h2>
                 <p className="mt-2 text-sm text-slate-500">
-                  {modules.length} modules · {allLessons.length} sample lessons
+                  {modules.length} modules · {allLessons.length} demo lessons
                 </p>
               </div>
+
               <span className="rounded-full bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700">
                 {enrolled ? `${progress}% completed` : "Preview curriculum"}
               </span>
@@ -348,6 +421,7 @@ export default function CourseDetails() {
             <div className="mt-6 space-y-4">
               {modules.map((module, moduleIndex) => {
                 const expanded = expandedModules.includes(moduleIndex);
+
                 const moduleCompleted = module.lessons.filter((lesson) =>
                   completedLessons.includes(lesson.title),
                 ).length;
@@ -370,6 +444,7 @@ export default function CourseDetails() {
                           completed
                         </p>
                       </div>
+
                       {expanded ? (
                         <ChevronUp className="shrink-0 text-slate-500" />
                       ) : (
@@ -383,12 +458,15 @@ export default function CourseDetails() {
                           const globalIndex = allLessons.findIndex(
                             (item) => item.title === lesson.title,
                           );
+
                           const done = completedLessons.includes(lesson.title);
+
                           const previousIncomplete = allLessons
                             .slice(0, globalIndex)
                             .some(
                               (item) => !completedLessons.includes(item.title),
                             );
+
                           const locked =
                             !enrolled || (previousIncomplete && !done);
 
@@ -417,6 +495,7 @@ export default function CourseDetails() {
                                   <Play size={17} />
                                 )}
                               </span>
+
                               <span className="min-w-0 flex-1">
                                 <span className="block text-sm font-medium text-slate-800">
                                   {lesson.title}
@@ -426,6 +505,7 @@ export default function CourseDetails() {
                                   {done ? " · Completed" : ""}
                                 </span>
                               </span>
+
                               <ArrowRight
                                 size={17}
                                 className="shrink-0 text-slate-400"
@@ -447,31 +527,34 @@ export default function CourseDetails() {
             <h2 className="text-xl font-bold text-[#172B75]">
               Course information
             </h2>
+
             <div className="mt-6 space-y-5">
               <InfoRow
-                icon={Clock}
-                label="Duration"
-                value={courseInfo.duration}
-              />
-              <InfoRow
                 icon={BookOpen}
-                label="Lessons"
-                value={`${allLessons.length} sample lessons`}
+                label="Category"
+                value={course.category || "General"}
               />
-              <InfoRow
-                icon={TrendingUp}
-                label="Level"
-                value={courseInfo.category}
-              />
+
+              <InfoRow icon={TrendingUp} label="Level" value={courseLevel} />
+
               <InfoRow
                 icon={Users}
-                label="Learners"
-                value={courseInfo.students}
+                label="Instructor"
+                value={course.instructor || "TradeLearn"}
               />
+
+              <InfoRow icon={Clock} label="Duration" value="Self-paced" />
+
               <InfoRow
                 icon={Star}
-                label="Rating"
-                value={`${courseInfo.rating} / 5`}
+                label="Price"
+                value={
+                  typeof course.price === "number"
+                    ? course.price === 0
+                      ? "Free"
+                      : `₹${course.price.toLocaleString("en-IN")}`
+                    : "See course pricing"
+                }
               />
             </div>
 
@@ -482,7 +565,12 @@ export default function CourseDetails() {
                 onClick={handleEnroll}
                 className="w-full rounded-xl bg-[#172B75] px-5 py-4 font-bold text-white transition hover:bg-blue-800"
               >
-                Enroll Now — Free Demo
+                Enroll Now
+                {course.price === 0
+                  ? " — Free"
+                  : typeof course.price === "number"
+                    ? ` — ₹${course.price.toLocaleString("en-IN")}`
+                    : ""}
               </button>
             ) : (
               <div className="rounded-xl bg-emerald-50 p-4 text-center">
@@ -491,14 +579,14 @@ export default function CourseDetails() {
                   Enrolled in demo
                 </p>
                 <p className="mt-1 text-xs text-emerald-700">
-                  Your progress is temporary and resets on refresh.
+                  Enrollment is temporary and resets on refresh.
                 </p>
               </div>
             )}
 
             <p className="mt-3 text-center text-xs leading-5 text-slate-500">
-              Demo experience only. Real enrollment and course access will
-              require backend integration.
+              Demo experience only. Enrollment and lesson progress are not yet
+              saved to the backend.
             </p>
           </div>
         </aside>
@@ -528,16 +616,20 @@ export default function CourseDetails() {
             <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">
               <Play size={25} />
             </div>
+
             <p className="text-xs font-bold tracking-widest text-blue-600">
               LESSON PREVIEW
             </p>
+
             <h2 className="mt-2 text-2xl font-bold text-[#172B75]">
               {activeLesson}
             </h2>
+
             <p className="mt-4 leading-7 text-slate-600">
-              This is a demo lesson screen. The actual video, lesson material,
-              and assessments can be connected later through the backend.
+              This is a demo lesson screen. Actual video, lesson material, and
+              assessments can be connected through the backend later.
             </p>
+
             <div className="mt-7 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
               <button
                 onClick={() => setActiveLesson(null)}
@@ -545,6 +637,7 @@ export default function CourseDetails() {
               >
                 Close
               </button>
+
               <button
                 onClick={markLessonComplete}
                 className="rounded-xl bg-[#172B75] px-5 py-3 font-semibold text-white hover:bg-blue-800"
@@ -573,9 +666,11 @@ function InfoRow({
       <div className="rounded-xl bg-blue-50 p-3 text-blue-700">
         <Icon size={19} />
       </div>
-      <div className="flex-1">
+      <div className="min-w-0 flex-1">
         <p className="text-xs text-slate-500">{label}</p>
-        <p className="mt-1 text-sm font-semibold text-slate-800">{value}</p>
+        <p className="mt-1 break-words text-sm font-semibold text-slate-800">
+          {value}
+        </p>
       </div>
     </div>
   );

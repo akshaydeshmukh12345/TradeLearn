@@ -1,4 +1,3 @@
-
 package com.tradelearn.backend;
 
 import org.springframework.data.jpa.repository.JpaRepository;
